@@ -46,7 +46,7 @@ public final class ServiceWorkerDetailsTableController: NSObject, NSTableViewDat
         tableView.delegate = self
         tableView.dataSource = self
         tableView.rowHeight = 40
-        tableView.allowsMultipleSelection = false
+        tableView.allowsMultipleSelection = true
         
         self.tableView = tableView
         
@@ -169,15 +169,26 @@ public final class ServiceWorkerDetailsTableController: NSObject, NSTableViewDat
         
         guard clickedRow >= 0, clickedColumn >= 0 else { return menu.cancelTrackingWithoutAnimation() }
         
-        let clickedWorker = sortedWorkers[clickedRow]
+        let selectedWorkers = tableView.selectedRowIndexes.map { sortedWorkers[$0] }
+        let actionGroups = selectedWorkers
+            .flatMap(\.combinedActions)
+            .groupBy(grouping: \.action.id)
+            .map(\.value)
         
-        for combinedAction in clickedWorker.combinedActions {
-            menu.addItem(
-                NSMenuItem.with(title: "\(combinedAction.service.name): \(combinedAction.action.name)") {
+        for actionGroup in actionGroups {
+            let title = actionGroup.map { "\($0.service.name): \($0.action.name)" }.joined(separator: "\n")
+            let action = { [weak self] in
+                for combinedAction in actionGroup {
                     combinedAction.service.execute(action: combinedAction.action, serviceWorker: combinedAction.serviceWorker)
                     combinedAction.service.updateWorkers()
-                    self.updateTableViewSorting()
                 }
+                self?.updateTableViewSorting()
+            }
+            menu.addItem(
+                NSMenuItem.with(
+                    title: title,
+                    action: action
+                )
             )
         }
     }
@@ -185,4 +196,10 @@ public final class ServiceWorkerDetailsTableController: NSObject, NSTableViewDat
 
 extension Bool {
     var comparableInt: Int { self == true ? 1 : 0 }
+}
+
+extension Collection {
+    func groupBy<Key: Hashable>(grouping: (Element) throws -> (Key)) rethrows -> [Key: [Element]] {
+        return try Dictionary(grouping: self, by: grouping)
+    }
 }

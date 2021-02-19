@@ -23,7 +23,7 @@ public extension NSMenuItem {
         submenu: NSMenu? = nil
     ) -> NSMenuItem {
         let item = NSMenuItem()
-        item.title = title
+        item.attributedTitle = NSAttributedString(string: title)
         item.image = image
         item.keyEquivalent = key
         item.keyEquivalentModifierMask = keyEquivalentModifierMask
